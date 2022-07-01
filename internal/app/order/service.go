@@ -9,6 +9,7 @@ import (
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/dto"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/model"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/repository"
+	"github.com/google/uuid"
 )
 
 type Service interface {
@@ -39,7 +40,8 @@ func (s *service) Create(ctx context.Context, payload dto.CreateOrderRequest) (*
 	// assign order ID
 	// TODO: implement UUID later for OrderID
 	rand.Seed(time.Now().UnixNano())
-	newOrder.ID = uint(rand.Intn(100))
+	// newOrder.ID = uint(rand.Intn(100))
+	newOrder.ID = uuid.New()
 
 	// new order always assigned with status 1: pending
 	// TODO: add logic to implement if order made directly in cashier, it can create order with status paid
@@ -50,7 +52,7 @@ func (s *service) Create(ctx context.Context, payload dto.CreateOrderRequest) (*
 
 	// Assign item from payload to model
 	for i, item := range payload.OrderItems {
-		newOrder.OrderItems[i].OrderID = &newOrder.ID
+		newOrder.OrderItems[i].OrderID = newOrder.ID
 		newOrder.OrderItems[i].MenuID = item.MenuID
 		newOrder.OrderItems[i].Status = model.Pending
 		newOrder.OrderItems[i].Price = getItemPrice(item.MenuID)

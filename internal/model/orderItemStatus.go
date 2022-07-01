@@ -1,8 +1,10 @@
 package model
 
-type OrderItemStatus struct {
-	ID    int    `json:"id" gorm:"primaryKey"`
-	State string `json:"state"`
+type OrderItemStatus string
 
-	Model
-}
+const (
+	Pending   OrderItemStatus = "pending"
+	Paid      OrderItemStatus = "paid"
+	Prepared  OrderItemStatus = "prepared"
+	Delivered OrderItemStatus = "delivered"
+)
