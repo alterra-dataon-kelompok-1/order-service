@@ -1,9 +1,11 @@
 package model
 
-// TODO: Implement model by ourselved to remove dependency to Gorm
-type OrderStatus struct {
-	ID    int    `json:"id" gorm:"primaryKey"`
-	State string `json:"state"`
+type OrderStatus string
 
-	Model
-}
+const (
+	PendingOrder   OrderStatus = "pending"
+	PaidOrder      OrderStatus = "paid"
+	PreparedOrder  OrderStatus = "prepared"
+	CompletedOrder OrderStatus = "completed"
+	CanceledOrder  OrderStatus = "canceled"
+)

@@ -9,16 +9,12 @@ func MigrateDB(db *gorm.DB) error {
 	return db.AutoMigrate(
 		model.Order{},
 		model.OrderItem{},
-		model.OrderItemStatus{},
-		model.OrderStatus{},
 	)
 }
 
 func DropTables(db *gorm.DB) error {
 	return db.Migrator().DropTable(
 		model.OrderItem{},
-		model.OrderItemStatus{},
-		model.OrderStatus{},
 		model.Order{},
 	)
 }
