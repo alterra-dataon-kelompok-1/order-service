@@ -43,7 +43,7 @@ func (s *service) Create(ctx context.Context, payload dto.CreateOrderRequest) (*
 
 	// new order always assigned with status 1: pending
 	// TODO: add logic to implement if order made directly in cashier, it can create order with status paid
-	newOrder.OrderStatusID = 1
+	newOrder.Status = model.PendingOrder
 
 	// Calculate Total Quantity
 	newOrder.TotalQuantity = sumItemQuantity(payload.OrderItems)
@@ -52,7 +52,7 @@ func (s *service) Create(ctx context.Context, payload dto.CreateOrderRequest) (*
 	for i, item := range payload.OrderItems {
 		newOrder.OrderItems[i].OrderID = &newOrder.ID
 		newOrder.OrderItems[i].MenuID = item.MenuID
-		newOrder.OrderItems[i].OrderItemStatusId = 1
+		newOrder.OrderItems[i].Status = model.Pending
 		newOrder.OrderItems[i].Price = getItemPrice(item.MenuID)
 		newOrder.OrderItems[i].Quantity = item.Quantity
 	}
@@ -60,10 +60,10 @@ func (s *service) Create(ctx context.Context, payload dto.CreateOrderRequest) (*
 	// Calculate Total Price
 	newOrder.TotalPrice = sumItemPrice(newOrder.OrderItems)
 
+	// Create order record in repository
 	createdOrder, err := s.repository.Create(ctx, *newOrder)
 
 	return createdOrder, err
-	// return newOrder, nil
 }
 
 func sumItemQuantity(s []dto.CreateOrderItemRequest) int {
