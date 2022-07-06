@@ -1,5 +1,7 @@
 package dto
 
+import "github.com/google/uuid"
+
 type GetRequest struct {
 	Pagination Pagination
 	AscField   []string `query:"asc_field"`
@@ -18,4 +20,8 @@ type CreateOrderItemRequest struct {
 
 func (c CreateOrderItemRequest) GetQuantity() int {
 	return c.Quantity
+}
+
+type ByIDRequest struct {
+	ID uuid.UUID `json:"id" param:"id" validate:"required"`
 }

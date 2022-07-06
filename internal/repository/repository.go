@@ -5,12 +5,14 @@ import (
 
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/dto"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/model"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type Repository interface {
-	GetOrder(ctx context.Context, payload *dto.GetRequest) (*[]model.Order, *dto.PaginationInfo, error)
+	GetOrders(ctx context.Context, payload *dto.GetRequest) (*[]model.Order, *dto.PaginationInfo, error)
 	Create(ctx context.Context, order model.Order) (*model.Order, error)
+	GetOrderByID(ctx context.Context, id uuid.UUID) (*model.Order, error)
 }
 
 type repository struct {
@@ -21,7 +23,7 @@ func NewRepository(db *gorm.DB) *repository {
 	return &repository{db}
 }
 
-func (r *repository) GetOrder(ctx context.Context, payload *dto.GetRequest) (*[]model.Order, *dto.PaginationInfo, error) {
+func (r *repository) GetOrders(ctx context.Context, payload *dto.GetRequest) (*[]model.Order, *dto.PaginationInfo, error) {
 	var orders []model.Order
 	var count int64
 
@@ -44,4 +46,11 @@ func (r *repository) GetOrder(ctx context.Context, payload *dto.GetRequest) (*[]
 func (r *repository) Create(ctx context.Context, order model.Order) (*model.Order, error) {
 	err := r.db.WithContext(ctx).Create(&order).Error
 	return &order, err
+}
+
+func (r *repository) GetOrderByID(ctx context.Context, id uuid.UUID) (*model.Order, error) {
+	var data model.Order
+	err := r.db.WithContext(ctx).First(&data, id).Error
+
+	return &data, err
 }

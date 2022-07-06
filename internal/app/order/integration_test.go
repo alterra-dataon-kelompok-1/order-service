@@ -11,8 +11,10 @@ import (
 	"github.com/alterra-dataon-kelompok-1/order-service/database"
 	"github.com/alterra-dataon-kelompok-1/order-service/database/seeder"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/dto"
+	"github.com/alterra-dataon-kelompok-1/order-service/internal/middleware"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/model"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/repository"
+	"github.com/alterra-dataon-kelompok-1/order-service/pkg/response"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -35,6 +37,8 @@ func createTestApp() (*echo.Echo, *gorm.DB, Handler) {
 	orderRepo := repository.NewRepository(db)
 	orderService := NewService(orderRepo)
 	orderHandler := NewHandler(orderService)
+
+	middleware.Init(e)
 
 	return e, db, orderHandler
 }
@@ -150,5 +154,88 @@ func TestCreateOrder_NoOrderItem(t *testing.T) {
 	// Assertion
 	if assert.NoError(t, h.Create(c)) {
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	}
+}
+
+func TestGetOrderByID_Base(t *testing.T) {
+	// Setup
+	e, db, h := createTestApp()
+	defer database.DropTables(db)
+	// Setup
+
+	req := httptest.NewRequest("GET", "/orders", nil)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+	rec := httptest.NewRecorder()
+
+	// Following orderID is coming from seeder
+	orderID := "b8a36547-d74d-4186-b293-9aae9f87f4f3"
+
+	c := e.NewContext(req, rec)
+	c.SetPath("/:id")
+	c.SetParamNames("id")
+	c.SetParamValues(orderID)
+
+	// Assertion
+	if assert.NoError(t, h.GetOrderByID(c)) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.NotEmpty(t, rec.Body.String())
+
+		jsonRes := response.SuccessResponse{Data: model.Order{}}
+		err := json.NewDecoder(rec.Body).Decode(&jsonRes)
+		if err != nil {
+			t.Error(err)
+		}
+	}
+}
+
+func TestGetOrderByID_IncorrectUUIDFormat(t *testing.T) {
+	// Setup
+	e, db, h := createTestApp()
+	defer database.DropTables(db)
+
+	req := httptest.NewRequest("GET", "/orders", nil)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+	rec := httptest.NewRecorder()
+
+	// UUID is shorter than it should
+	orderID := "b8a36547-d74d-4186-b293-9aae"
+
+	c := e.NewContext(req, rec)
+	c.SetPath("/:id")
+	c.SetParamNames("id")
+	c.SetParamValues(orderID)
+
+	// Assertion
+	if assert.NoError(t, h.GetOrderByID(c)) {
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.NotEmpty(t, rec.Body.String())
+	}
+}
+
+func TestGetOrderByID_NotFound(t *testing.T) {
+	// Setup
+	e, db, h := createTestApp()
+	defer database.DropTables(db)
+	// Setup
+
+	req := httptest.NewRequest("GET", "/orders", nil)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+	rec := httptest.NewRecorder()
+
+	// Random UUID as input
+	orderID := "1c08b996-92bb-4c09-aa3b-989b4c5092ca"
+
+	c := e.NewContext(req, rec)
+	c.SetPath("/:id")
+	c.SetParamNames("id")
+	c.SetParamValues(orderID)
+
+	// Assertion
+	if assert.NoError(t, h.GetOrderByID(c)) {
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+		assert.NotEmpty(t, rec.Body.String())
 	}
 }

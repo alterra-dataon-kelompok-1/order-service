@@ -13,7 +13,7 @@ func orderTableSeeder(conn *gorm.DB) {
 	id2 := uuid.New()
 	id3 := uuid.New()
 	id4 := uuid.New()
-	id5 := uuid.New()
+	id5, _ := uuid.Parse("b8a36547-d74d-4186-b293-9aae9f87f4f3")
 
 	orderItems1 := model.OrderItem{
 		OrderID:  id1,
