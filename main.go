@@ -13,6 +13,7 @@ import (
 	"github.com/alterra-dataon-kelompok-1/order-service/database"
 	"github.com/alterra-dataon-kelompok-1/order-service/database/seeder"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/app/order"
+	"github.com/alterra-dataon-kelompok-1/order-service/internal/middleware"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/repository"
 	"github.com/alterra-dataon-kelompok-1/order-service/pkg/utils/interservice"
 	"github.com/labstack/echo/v4"
@@ -56,6 +57,7 @@ func main() {
 
 	app := echo.New()
 	order.RegisterHandlers(app, orderHandler)
+	middleware.Init(app)
 
 	// Gracefully shutdown
 	go func() {

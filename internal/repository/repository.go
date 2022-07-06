@@ -13,6 +13,7 @@ type Repository interface {
 	GetOrders(ctx context.Context, payload *dto.GetRequest) (*[]model.Order, *dto.PaginationInfo, error)
 	Create(ctx context.Context, order model.Order) (*model.Order, error)
 	GetOrderByID(ctx context.Context, id uuid.UUID) (*model.Order, error)
+	DeleteOrderByID(ctx context.Context, id uuid.UUID) error
 }
 
 type repository struct {
@@ -53,4 +54,8 @@ func (r *repository) GetOrderByID(ctx context.Context, id uuid.UUID) (*model.Ord
 	err := r.db.WithContext(ctx).First(&data, id).Error
 
 	return &data, err
+}
+
+func (r *repository) DeleteOrderByID(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Delete(&model.Order{}, id).Error
 }

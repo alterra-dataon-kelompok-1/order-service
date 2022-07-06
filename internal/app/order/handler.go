@@ -1,6 +1,7 @@
 package order
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/dto"
@@ -12,6 +13,7 @@ type Handler interface {
 	Get(c echo.Context) error
 	Create(c echo.Context) error
 	GetOrderByID(c echo.Context) error
+	DeleteOrderByID(c echo.Context) error
 }
 
 type handler struct {
@@ -27,7 +29,6 @@ func NewHandler(service Service) Handler {
 func (h *handler) Get(c echo.Context) error {
 	var payload dto.GetRequest
 	c.Bind(&payload)
-
 
 	orders, err := h.service.Get(c.Request().Context(), &payload)
 	if err != nil {
@@ -54,8 +55,10 @@ func (h *handler) GetOrderByID(c echo.Context) error {
 	if err := c.Bind(&payload); err != nil {
 		return res.NewErrorResponse(c, res.ErrorConst.BadRequest)
 	}
+	log.Println(payload)
 
 	if err := c.Validate(payload); err != nil {
+		log.Println(err)
 		return res.NewErrorResponse(c, res.ErrorConst.Validation)
 	}
 
@@ -65,5 +68,24 @@ func (h *handler) GetOrderByID(c echo.Context) error {
 	}
 
 	resp := res.NewSuccessBuilder().Status(http.StatusOK).WithData(result)
+	return resp.SendJSON(c)
+}
+
+func (h *handler) DeleteOrderByID(c echo.Context) error {
+	payload := dto.ByIDRequest{}
+	if err := c.Bind(&payload); err != nil {
+		return res.NewErrorResponse(c, res.ErrorConst.BadRequest)
+	}
+
+	if err := c.Validate(payload); err != nil {
+		return res.NewErrorResponse(c, res.ErrorConst.Validation)
+	}
+
+	data, err := h.service.DeleteOrderByID(c.Request().Context(), &payload)
+	if err != nil {
+		return res.NewErrorResponse(c, res.ErrorConst.ResourceNotFound)
+	}
+
+	resp := res.NewSuccessBuilder().Status(http.StatusOK).WithData(data)
 	return resp.SendJSON(c)
 }

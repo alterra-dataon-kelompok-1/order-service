@@ -15,6 +15,7 @@ type Service interface {
 	Get(ctx context.Context, payload *dto.GetRequest) (*dto.SearchGetResponse[model.Order], error)
 	Create(ctx context.Context, payload dto.CreateOrderRequest) (*model.Order, error)
 	GetOrderByID(ctx context.Context, payload *dto.ByIDRequest) (*model.Order, error)
+	DeleteOrderByID(ctx context.Context, payload *dto.ByIDRequest) (*model.Order, error)
 }
 
 type service struct {
@@ -40,7 +41,6 @@ func (s *service) Get(ctx context.Context, payload *dto.GetRequest) (*dto.Search
 }
 
 func (s *service) Create(ctx context.Context, payload dto.CreateOrderRequest) (*model.Order, error) {
-
 	// Cannot create order if no order item in payload
 	reqOrderQuantity := sumItemQuantity(payload.OrderItems)
 	if reqOrderQuantity == 0 {
@@ -90,6 +90,16 @@ func (s *service) GetOrderByID(ctx context.Context, payload *dto.ByIDRequest) (*
 
 	// TODO: decide if we need to transfer response dto instead
 	return data, nil
+}
+
+func (s *service) DeleteOrderByID(ctx context.Context, payload *dto.ByIDRequest) (*model.Order, error) {
+	data, err := s.repository.GetOrderByID(ctx, payload.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.repository.DeleteOrderByID(ctx, payload.ID)
+	return data, err
 }
 
 type hasQuantity interface {

@@ -10,6 +10,9 @@ type Order struct {
 	Status        OrderStatus `json:"order_status" gorm:"type:enum('pending','paid','prepared','completed','canceled');default:'pending'"`
 	TotalPrice    float32     `json:"total_price" gorm:"not null"`
 	TotalQuantity int         `json:"total_quantity" gorm:"not null"`
+	DailyID       uint        `json:"daily_id" gorm:"not null"`
+
+	// Day 		Datetime
 
 	OrderItems []OrderItem `json:"order_items" gorm:"foreignKey:OrderID"`
 
