@@ -14,6 +14,7 @@ import (
 	"github.com/alterra-dataon-kelompok-1/order-service/database/seeder"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/app/order"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/repository"
+	"github.com/alterra-dataon-kelompok-1/order-service/pkg/utils/interservice"
 	"github.com/labstack/echo/v4"
 )
 
@@ -49,6 +50,10 @@ func main() {
 	orderService := order.NewService(orderRepo)
 	orderHandler := order.NewHandler(orderService)
 
+	// FIX: how to implement cleanly
+	menuServiceAPI := interservice.NewInterservice(config)
+	log.Println(menuServiceAPI)
+
 	app := echo.New()
 	order.RegisterHandlers(app, orderHandler)
 
@@ -76,7 +81,4 @@ func main() {
 	if err := app.Shutdown(ctx); err != nil {
 		log.Fatal(err)
 	}
-}
-
-func init() {
 }

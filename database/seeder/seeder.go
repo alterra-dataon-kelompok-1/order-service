@@ -5,4 +5,5 @@ import (
 )
 
 func Seed(conn *gorm.DB) {
+	orderTableSeeder(conn)
 }
