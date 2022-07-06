@@ -3,16 +3,16 @@ package order
 import (
 	"context"
 	"errors"
-	"math/rand"
-	"time"
 
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/dto"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/model"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/repository"
+	"github.com/alterra-dataon-kelompok-1/order-service/pkg/utils/helper"
 	"github.com/google/uuid"
 )
 
 type Service interface {
+	Get(ctx context.Context, payload *dto.GetRequest) (*dto.SearchGetResponse[model.Order], error)
 	Create(ctx context.Context, payload dto.CreateOrderRequest) (*model.Order, error)
 }
 
@@ -24,10 +24,25 @@ func NewService(repository repository.Repository) Service {
 	return &service{repository}
 }
 
+func (s *service) Get(ctx context.Context, payload *dto.GetRequest) (*dto.SearchGetResponse[model.Order], error) {
+	orders, paginationInfo, err := s.repository.GetOrder(ctx, payload)
+	if err != nil {
+		return nil, err
+	}
+
+	result := dto.SearchGetResponse[model.Order]{
+		PaginationInfo: paginationInfo,
+		Data:           *orders,
+	}
+
+	return &result, nil
+}
+
 func (s *service) Create(ctx context.Context, payload dto.CreateOrderRequest) (*model.Order, error) {
 
 	// Cannot create order if no order item in payload
-	if len(payload.OrderItems) == 0 {
+	reqOrderQuantity := sumItemQuantity(payload.OrderItems)
+	if reqOrderQuantity == 0 {
 		return nil, errors.New("order shall have minimum 1 item")
 	}
 
@@ -38,28 +53,23 @@ func (s *service) Create(ctx context.Context, payload dto.CreateOrderRequest) (*
 	newOrder.UserID = payload.UserID
 
 	// assign order ID
-	// TODO: implement UUID later for OrderID
-	rand.Seed(time.Now().UnixNano())
-	// newOrder.ID = uint(rand.Intn(100))
 	newOrder.ID = uuid.New()
 
 	// new order always assigned with status 1: pending
 	// TODO: add logic to implement if order made directly in cashier, it can create order with status paid
 	newOrder.Status = model.PendingOrder
 
-	// Calculate Total Quantity
-	newOrder.TotalQuantity = sumItemQuantity(payload.OrderItems)
-
 	// Assign item from payload to model
 	for i, item := range payload.OrderItems {
 		newOrder.OrderItems[i].OrderID = newOrder.ID
 		newOrder.OrderItems[i].MenuID = item.MenuID
 		newOrder.OrderItems[i].Status = model.Pending
-		newOrder.OrderItems[i].Price = getItemPrice(item.MenuID)
+		newOrder.OrderItems[i].Price = helper.GetItemPrice(item.MenuID)
 		newOrder.OrderItems[i].Quantity = item.Quantity
 	}
 
-	// Calculate Total Price
+	// Calculate Total Quantity and Total Price
+	newOrder.TotalQuantity = sumItemQuantity(payload.OrderItems)
 	newOrder.TotalPrice = sumItemPrice(newOrder.OrderItems)
 
 	// Create order record in repository
@@ -68,10 +78,14 @@ func (s *service) Create(ctx context.Context, payload dto.CreateOrderRequest) (*
 	return createdOrder, err
 }
 
-func sumItemQuantity(s []dto.CreateOrderItemRequest) int {
+type hasQuantity interface {
+	GetQuantity() int
+}
+
+func sumItemQuantity[T hasQuantity](s []T) int {
 	var sum int
 	for _, item := range s {
-		sum += item.Quantity
+		sum += item.GetQuantity()
 	}
 	return sum
 }
@@ -82,9 +96,4 @@ func sumItemPrice(s []model.OrderItem) float32 {
 		sum = sum + (item.Price * float32(item.Quantity))
 	}
 	return sum
-}
-
-// TODO: Implement get item price (API call to other table)
-func getItemPrice(id int) float32 {
-	return float32(3000)
 }

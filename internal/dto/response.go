@@ -1,6 +1,13 @@
 package dto
 
-import "github.com/alterra-dataon-kelompok-1/order-service/internal/model"
+import (
+	"time"
+)
+
+type SearchGetResponse[T any] struct {
+	Data           []T `json:"data"`
+	PaginationInfo *PaginationInfo
+}
 
 type GetOrderItemResponse struct {
 	MenuID          int     `json:"menu_id"`
@@ -17,6 +24,5 @@ type CreateOrderResponse struct {
 	TotalQuantity int    `json:"total_quantity"`
 
 	OrderItems []GetOrderItemResponse `json:"items"`
-
-	model.Model
+	CreatedAt  time.Time              `json:"created_at"`
 }
