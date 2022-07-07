@@ -3,6 +3,7 @@ package order
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/dto"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/model"
@@ -14,6 +15,7 @@ import (
 type Service interface {
 	Get(ctx context.Context, payload *dto.GetRequest) (*dto.SearchGetResponse[model.Order], error)
 	Create(ctx context.Context, payload dto.CreateOrderRequest) (*model.Order, error)
+	UpdateOrderByID(c context.Context, id uuid.UUID, payload *dto.UpdateOrderRequest) error
 }
 
 type service struct {
@@ -57,13 +59,13 @@ func (s *service) Create(ctx context.Context, payload dto.CreateOrderRequest) (*
 
 	// new order always assigned with status 1: pending
 	// TODO: add logic to implement if order made directly in cashier, it can create order with status paid
-	newOrder.Status = model.PendingOrder
+	newOrder.OrderStatus = model.PendingOrder
 
 	// Assign item from payload to model
 	for i, item := range payload.OrderItems {
 		newOrder.OrderItems[i].OrderID = newOrder.ID
 		newOrder.OrderItems[i].MenuID = item.MenuID
-		newOrder.OrderItems[i].Status = model.Pending
+		newOrder.OrderItems[i].OrderItemStatus = model.Pending
 		newOrder.OrderItems[i].Price = helper.GetItemPrice(item.MenuID)
 		newOrder.OrderItems[i].Quantity = item.Quantity
 	}
@@ -76,6 +78,69 @@ func (s *service) Create(ctx context.Context, payload dto.CreateOrderRequest) (*
 	createdOrder, err := s.repository.Create(ctx, *newOrder)
 
 	return createdOrder, err
+}
+
+func (s *service) UpdateOrderByID(c context.Context, id uuid.UUID, payload *dto.UpdateOrderRequest) error {
+	// TODO: add logic to prevent cancel order when order is being prepared
+	/*
+		oldData, err := s.repository.GetOrderByID
+		if err != nil {
+			return err
+		}
+		if oldData.Status == PreparedOrder && payload.Status == CanceledOrder {
+			return nil, errors.New("cannot cancel order after prepared")
+		}
+	*/
+
+	// orderData := make(map[string]interface{})
+	// if payload.OrderStatus != nil {
+	// 	orderData["order_status"] = payload.OrderStatus
+	//
+	// 	err := s.repository.UpdateOrderByID(c, id, orderData)
+	// 	if err != nil {
+	// 		return errors.New("E_SERVER")
+	// 	}
+	// }
+	var update model.Order
+	if payload.OrderStatus != nil {
+		update.OrderStatus = *payload.OrderStatus
+	}
+	if payload.OrderItems != nil {
+		update.OrderItems = make([]model.OrderItem, len(*payload.OrderItems))
+		for i, item := range *payload.OrderItems {
+			update.OrderItems[i].OrderID = id
+			update.OrderItems[i].MenuID = item.MenuID
+			if item.Status != nil {
+				update.OrderItems[i].OrderItemStatus = *item.Status
+				fmt.Println("updatedorder status updated:", update.OrderItems[i].OrderItemStatus)
+			}
+			if item.Quantity != nil {
+				update.OrderItems[i].Quantity = *item.Quantity
+				fmt.Println("updatedorder quantity updated:", update.OrderItems[i].Quantity)
+			}
+		}
+	}
+
+	err := s.repository.UpdateOrderByIDWithModel(c, id, &update)
+	if err != nil {
+		return err
+	}
+
+	// if payload.OrderItems != nil {
+	// 	for _, v := range *payload.OrderItems {
+	// 		log.Println(v)
+	// 		orderItemData := make(map[string]interface{})
+	// 		if v.Status != nil {
+	// 			orderItemData["order_item_status"] = v.Status
+	// 		}
+	// 		if v.Quantity != nil {
+	// 			orderItemData["quantity"] = v.Quantity
+	// 		}
+	// 		fmt.Println("orderitems from payload=>", orderItemData)
+	// 	}
+	// }
+
+	return nil
 }
 
 type hasQuantity interface {

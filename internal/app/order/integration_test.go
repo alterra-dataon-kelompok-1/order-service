@@ -13,6 +13,7 @@ import (
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/dto"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/model"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/repository"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -95,11 +96,12 @@ func TestCreateOrder(t *testing.T) {
 	e, db, h := createTestApp()
 	defer database.DropTables(db)
 
+	id := uuid.New()
 	newOrder := dto.CreateOrderRequest{
-		UserID: 999,
+		UserID: &id,
 		OrderItems: []dto.CreateOrderItemRequest{
 			{
-				MenuID:   123,
+				MenuID:   uuid.New(),
 				Quantity: 1,
 			},
 		},
@@ -129,11 +131,12 @@ func TestCreateOrder_NoOrderItem(t *testing.T) {
 	e, db, h := createTestApp()
 	defer database.DropTables(db)
 
+	id := uuid.New()
 	newOrder := dto.CreateOrderRequest{
-		UserID: 999,
+		UserID: &id,
 		OrderItems: []dto.CreateOrderItemRequest{
 			{
-				MenuID:   123,
+				MenuID:   uuid.New(),
 				Quantity: 0,
 			},
 		},

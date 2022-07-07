@@ -8,5 +8,5 @@ func RegisterHandlers(e *echo.Echo, h Handler) {
 
 	// e.GET("/orders/:id", h.GetByID)
 	// e.DELETE("/orders/:id", h.Delete)
-	// e.PUT("/orders/:id", h.Update)
+	e.PUT("/orders/:id", h.UpdateOrderByID)
 }
