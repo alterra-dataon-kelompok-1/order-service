@@ -35,3 +35,7 @@ type UpdateOrderItemRequest struct {
 	Status   *model.OrderItemStatus `json:"order_item_status"`
 	Quantity *int                   `json:"quantity"`
 }
+
+type ByIDRequest struct {
+	ID uuid.UUID `json:"id" param:"id" validate:"required"`
+}

@@ -15,6 +15,8 @@ import (
 type Service interface {
 	Get(ctx context.Context, payload *dto.GetRequest) (*dto.SearchGetResponse[model.Order], error)
 	Create(ctx context.Context, payload dto.CreateOrderRequest) (*model.Order, error)
+	GetOrderByID(ctx context.Context, payload *dto.ByIDRequest) (*model.Order, error)
+	DeleteOrderByID(ctx context.Context, payload *dto.ByIDRequest) (*model.Order, error)
 	UpdateOrderByID(c context.Context, id uuid.UUID, payload *dto.UpdateOrderRequest) error
 }
 
@@ -27,7 +29,7 @@ func NewService(repository repository.Repository) Service {
 }
 
 func (s *service) Get(ctx context.Context, payload *dto.GetRequest) (*dto.SearchGetResponse[model.Order], error) {
-	orders, paginationInfo, err := s.repository.GetOrder(ctx, payload)
+	orders, paginationInfo, err := s.repository.GetOrders(ctx, payload)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +43,6 @@ func (s *service) Get(ctx context.Context, payload *dto.GetRequest) (*dto.Search
 }
 
 func (s *service) Create(ctx context.Context, payload dto.CreateOrderRequest) (*model.Order, error) {
-
 	// Cannot create order if no order item in payload
 	reqOrderQuantity := sumItemQuantity(payload.OrderItems)
 	if reqOrderQuantity == 0 {
@@ -78,6 +79,29 @@ func (s *service) Create(ctx context.Context, payload dto.CreateOrderRequest) (*
 	createdOrder, err := s.repository.Create(ctx, *newOrder)
 
 	return createdOrder, err
+}
+
+func (s *service) GetOrderByID(ctx context.Context, payload *dto.ByIDRequest) (*model.Order, error) {
+	data, err := s.repository.GetOrderByID(ctx, payload.ID)
+	if err != nil {
+		if err == errors.New("E_NOT_FOUND") {
+			return nil, err
+		}
+		return nil, errors.New("E_SERVER")
+	}
+
+	// TODO: decide if we need to transfer response dto instead
+	return data, nil
+}
+
+func (s *service) DeleteOrderByID(ctx context.Context, payload *dto.ByIDRequest) (*model.Order, error) {
+	data, err := s.repository.GetOrderByID(ctx, payload.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.repository.DeleteOrderByID(ctx, payload.ID)
+	return data, err
 }
 
 func (s *service) UpdateOrderByID(c context.Context, id uuid.UUID, payload *dto.UpdateOrderRequest) error {

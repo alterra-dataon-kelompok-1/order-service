@@ -14,6 +14,8 @@ import (
 type Handler interface {
 	Get(c echo.Context) error
 	Create(c echo.Context) error
+	GetOrderByID(c echo.Context) error
+	DeleteOrderByID(c echo.Context) error
 	UpdateOrderByID(c echo.Context) error
 }
 
@@ -49,6 +51,46 @@ func (h *handler) Create(c echo.Context) error {
 
 	successResp := res.NewSuccessBuilder().Status(http.StatusCreated).WithData(*newOrder).WithResourceLocation(os.Getenv("MENU_SERVICE_URL"), newOrder.ID.String())
 	return successResp.SendJSON(c)
+}
+
+func (h *handler) GetOrderByID(c echo.Context) error {
+	payload := dto.ByIDRequest{}
+	if err := c.Bind(&payload); err != nil {
+		return res.NewErrorResponse(c, res.ErrorConst.BadRequest)
+	}
+	log.Println(payload)
+
+	if err := c.Validate(payload); err != nil {
+		log.Println(err)
+		return res.NewErrorResponse(c, res.ErrorConst.Validation)
+	}
+
+	result, err := h.service.GetOrderByID(c.Request().Context(), &payload)
+	if err != nil {
+		return res.NewErrorResponse(c, res.ErrorConst.ResourceNotFound)
+	}
+
+	resp := res.NewSuccessBuilder().Status(http.StatusOK).WithData(result)
+	return resp.SendJSON(c)
+}
+
+func (h *handler) DeleteOrderByID(c echo.Context) error {
+	payload := dto.ByIDRequest{}
+	if err := c.Bind(&payload); err != nil {
+		return res.NewErrorResponse(c, res.ErrorConst.BadRequest)
+	}
+
+	if err := c.Validate(payload); err != nil {
+		return res.NewErrorResponse(c, res.ErrorConst.Validation)
+	}
+
+	data, err := h.service.DeleteOrderByID(c.Request().Context(), &payload)
+	if err != nil {
+		return res.NewErrorResponse(c, res.ErrorConst.ResourceNotFound)
+	}
+
+	resp := res.NewSuccessBuilder().Status(http.StatusOK).WithData(data)
+	return resp.SendJSON(c)
 }
 
 func (h *handler) UpdateOrderByID(c echo.Context) error {

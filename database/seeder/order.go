@@ -16,8 +16,8 @@ func orderTableSeeder(conn *gorm.DB) {
 	oid4, _ := uuid.Parse("efdd3bf4-11cc-4a3f-905b-a8e8e4c2fe72")
 	oid5, _ := uuid.Parse("e085a0f9-de1f-4a01-a5d1-0cdd89fd9c9b")
 
-	mid1, _ := uuid.Parse("b49f6655-935d-48c7-8e90-2cb43e4d8a08")
-	mid2, _ := uuid.Parse("09b44a8b-c0c8-4c1f-8220-ab3fe7f6b2bf")
+	mid1, _ := uuid.Parse("638723dd-76d5-4e19-965c-7b541b416ccb")
+	mid2, _ := uuid.Parse("07fbb648-977e-46dd-bfc8-7843fb6823da")
 	mid3, _ := uuid.Parse("fae9e513-fe98-4e36-8c7b-9a1ad75ff2c5")
 	mid4, _ := uuid.Parse("e6ecfbe9-975c-4aad-b6a5-30effdffb6e3")
 
