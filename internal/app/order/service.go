@@ -3,7 +3,6 @@ package order
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/dto"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/model"
@@ -106,25 +105,31 @@ func (s *service) DeleteOrderByID(ctx context.Context, payload *dto.ByIDRequest)
 
 func (s *service) UpdateOrderByID(c context.Context, id uuid.UUID, payload *dto.UpdateOrderRequest) error {
 	// TODO: add logic to prevent cancel order when order is being prepared
-	/*
-		oldData, err := s.repository.GetOrderByID
-		if err != nil {
-			return err
-		}
-		if oldData.Status == PreparedOrder && payload.Status == CanceledOrder {
-			return nil, errors.New("cannot cancel order after prepared")
-		}
-	*/
+	queriedOrder, err := s.repository.GetOrderByID(c, id)
+	if err != nil {
+		return err
+	}
 
-	// orderData := make(map[string]interface{})
-	// if payload.OrderStatus != nil {
-	// 	orderData["order_status"] = payload.OrderStatus
-	//
-	// 	err := s.repository.UpdateOrderByID(c, id, orderData)
-	// 	if err != nil {
-	// 		return errors.New("E_SERVER")
+	// FIX: issue might be due to golang not allow us to
+	// fmt.Println(*payload.OrderStatus == model.CanceledOrder)
+	// fmt.Println(queriedOrder.OrderStatus != model.PendingOrder)
+	// fmt.Println(queriedOrder.OrderStatus != model.PaidOrder)
+	// if *payload.OrderStatus == model.CanceledOrder {
+	// 	if oldData.OrderStatus != model.PendingOrder || oldData.OrderStatus != model.PaidOrder {
+	// 		return errors.New("cannot cancel order after prepared")
 	// 	}
 	// }
+
+	/* orderData := make(map[string]interface{})
+	if payload.OrderStatus != nil {
+		orderData["order_status"] = payload.OrderStatus
+
+		err := s.repository.UpdateOrderByID(c, id, orderData)
+		if err != nil {
+			return errors.New("E_SERVER")
+		}
+	} */
+
 	var update model.Order
 	if payload.OrderStatus != nil {
 		update.OrderStatus = *payload.OrderStatus
@@ -136,16 +141,14 @@ func (s *service) UpdateOrderByID(c context.Context, id uuid.UUID, payload *dto.
 			update.OrderItems[i].MenuID = item.MenuID
 			if item.Status != nil {
 				update.OrderItems[i].OrderItemStatus = *item.Status
-				fmt.Println("updatedorder status updated:", update.OrderItems[i].OrderItemStatus)
 			}
 			if item.Quantity != nil {
 				update.OrderItems[i].Quantity = *item.Quantity
-				fmt.Println("updatedorder quantity updated:", update.OrderItems[i].Quantity)
 			}
 		}
 	}
 
-	err := s.repository.UpdateOrderByIDWithModel(c, id, &update)
+	err = s.repository.UpdateOrderByIDWithModel(c, id, &update)
 	if err != nil {
 		return err
 	}

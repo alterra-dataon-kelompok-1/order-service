@@ -27,11 +27,12 @@ func (c CreateOrderItemRequest) GetQuantity() int {
 
 type UpdateOrderRequest struct {
 	OrderStatus *model.OrderStatus        `json:"order_status"`
-	OrderItems  *[]UpdateOrderItemRequest `json:"order_items"`
+	OrderItems  *[]UpdateOrderItemRequest `json:"order_items" gorm:"foreignKey:OrderID"`
 }
 
 type UpdateOrderItemRequest struct {
-	MenuID   uuid.UUID              `json:"menu_id" validation:"required"`
+	OrderID  uuid.UUID              `json:"order_id" gorm:"type:uuid;primaryKey"`
+	MenuID   uuid.UUID              `json:"menu_id" validation:"required" gorm:"primaryKey;not null"`
 	Status   *model.OrderItemStatus `json:"order_item_status"`
 	Quantity *int                   `json:"quantity"`
 }
