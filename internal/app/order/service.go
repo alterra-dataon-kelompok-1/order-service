@@ -14,6 +14,9 @@ import (
 type Service interface {
 	Get(ctx context.Context, payload *dto.GetRequest) (*dto.SearchGetResponse[model.Order], error)
 	Create(ctx context.Context, payload dto.CreateOrderRequest) (*model.Order, error)
+	GetOrderByID(ctx context.Context, payload *dto.ByIDRequest) (*model.Order, error)
+	DeleteOrderByID(ctx context.Context, payload *dto.ByIDRequest) (*model.Order, error)
+	UpdateOrderByID(c context.Context, id uuid.UUID, payload *dto.UpdateOrderRequest) error
 }
 
 type service struct {
@@ -25,7 +28,7 @@ func NewService(repository repository.Repository) Service {
 }
 
 func (s *service) Get(ctx context.Context, payload *dto.GetRequest) (*dto.SearchGetResponse[model.Order], error) {
-	orders, paginationInfo, err := s.repository.GetOrder(ctx, payload)
+	orders, paginationInfo, err := s.repository.GetOrders(ctx, payload)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +42,6 @@ func (s *service) Get(ctx context.Context, payload *dto.GetRequest) (*dto.Search
 }
 
 func (s *service) Create(ctx context.Context, payload dto.CreateOrderRequest) (*model.Order, error) {
-
 	// Cannot create order if no order item in payload
 	reqOrderQuantity := sumItemQuantity(payload.OrderItems)
 	if reqOrderQuantity == 0 {
@@ -57,13 +59,13 @@ func (s *service) Create(ctx context.Context, payload dto.CreateOrderRequest) (*
 
 	// new order always assigned with status 1: pending
 	// TODO: add logic to implement if order made directly in cashier, it can create order with status paid
-	newOrder.Status = model.PendingOrder
+	newOrder.OrderStatus = model.PendingOrder
 
 	// Assign item from payload to model
 	for i, item := range payload.OrderItems {
 		newOrder.OrderItems[i].OrderID = newOrder.ID
 		newOrder.OrderItems[i].MenuID = item.MenuID
-		newOrder.OrderItems[i].Status = model.Pending
+		newOrder.OrderItems[i].OrderItemStatus = model.Pending
 		newOrder.OrderItems[i].Price = helper.GetItemPrice(item.MenuID)
 		newOrder.OrderItems[i].Quantity = item.Quantity
 	}
@@ -76,6 +78,96 @@ func (s *service) Create(ctx context.Context, payload dto.CreateOrderRequest) (*
 	createdOrder, err := s.repository.Create(ctx, *newOrder)
 
 	return createdOrder, err
+}
+
+func (s *service) GetOrderByID(ctx context.Context, payload *dto.ByIDRequest) (*model.Order, error) {
+	data, err := s.repository.GetOrderByID(ctx, payload.ID)
+	if err != nil {
+		if err == errors.New("E_NOT_FOUND") {
+			return nil, err
+		}
+		return nil, errors.New("E_SERVER")
+	}
+
+	// TODO: decide if we need to transfer response dto instead
+	return data, nil
+}
+
+func (s *service) DeleteOrderByID(ctx context.Context, payload *dto.ByIDRequest) (*model.Order, error) {
+	data, err := s.repository.GetOrderByID(ctx, payload.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.repository.DeleteOrderByID(ctx, payload.ID)
+	return data, err
+}
+
+func (s *service) UpdateOrderByID(c context.Context, id uuid.UUID, payload *dto.UpdateOrderRequest) error {
+	// TODO: add logic to prevent cancel order when order is being prepared
+	// queriedOrder, err := s.repository.GetOrderByID(c, id)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// FIX: issue might be due to golang not allow us to
+	// fmt.Println(*payload.OrderStatus == model.CanceledOrder)
+	// fmt.Println(queriedOrder.OrderStatus != model.PendingOrder)
+	// fmt.Println(queriedOrder.OrderStatus != model.PaidOrder)
+	// if *payload.OrderStatus == model.CanceledOrder {
+	// 	if oldData.OrderStatus != model.PendingOrder || oldData.OrderStatus != model.PaidOrder {
+	// 		return errors.New("cannot cancel order after prepared")
+	// 	}
+	// }
+
+	/* orderData := make(map[string]interface{})
+	if payload.OrderStatus != nil {
+		orderData["order_status"] = payload.OrderStatus
+
+		err := s.repository.UpdateOrderByID(c, id, orderData)
+		if err != nil {
+			return errors.New("E_SERVER")
+		}
+	} */
+
+	var update model.Order
+	if payload.OrderStatus != nil {
+		update.OrderStatus = *payload.OrderStatus
+	}
+	if payload.OrderItems != nil {
+		update.OrderItems = make([]model.OrderItem, len(*payload.OrderItems))
+		for i, item := range *payload.OrderItems {
+			update.OrderItems[i].OrderID = id
+			update.OrderItems[i].MenuID = item.MenuID
+			if item.Status != nil {
+				update.OrderItems[i].OrderItemStatus = *item.Status
+			}
+			if item.Quantity != nil {
+				update.OrderItems[i].Quantity = *item.Quantity
+			}
+		}
+	}
+
+	err := s.repository.UpdateOrderByIDWithModel(c, id, &update)
+	if err != nil {
+		return err
+	}
+
+	// if payload.OrderItems != nil {
+	// 	for _, v := range *payload.OrderItems {
+	// 		log.Println(v)
+	// 		orderItemData := make(map[string]interface{})
+	// 		if v.Status != nil {
+	// 			orderItemData["order_item_status"] = v.Status
+	// 		}
+	// 		if v.Quantity != nil {
+	// 			orderItemData["quantity"] = v.Quantity
+	// 		}
+	// 		fmt.Println("orderitems from payload=>", orderItemData)
+	// 	}
+	// }
+
+	return nil
 }
 
 type hasQuantity interface {
