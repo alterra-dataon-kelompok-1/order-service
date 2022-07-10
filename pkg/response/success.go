@@ -8,6 +8,7 @@ import (
 
 type SuccessResponse struct {
 	Data     interface{} `json:"data"`
+	Meta     interface{} `json:"meta,omitempty"`
 	Location string      `json:"_location,omitempty"`
 }
 

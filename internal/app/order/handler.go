@@ -118,12 +118,12 @@ func (h *handler) UpdateOrderByID(c echo.Context) error {
 		return res.NewErrorResponse(c, res.ErrorConst.BadRequest)
 	}
 
-	err = h.service.UpdateOrderByID(c.Request().Context(), id, payload)
+	data, err := h.service.UpdateOrderByID(c.Request().Context(), id, payload)
 	if err != nil {
 		log.Println("==> error:", err)
 		return res.NewErrorResponse(c, res.ErrorConst.InternalServerError)
 	}
 
-	resp := res.NewSuccessBuilder().Status(http.StatusOK)
+	resp := res.NewSuccessBuilder().Status(http.StatusOK).WithData(data)
 	return resp.SendJSON(c)
 }

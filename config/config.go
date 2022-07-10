@@ -13,13 +13,6 @@ type Config interface {
 
 type config struct{}
 
-// Jwt signing key
-var JwtSigningKey = "altadataon"
-
-// Token expiration in hour
-var TokenExpiration = 72
-
-// SQL connection config
 func (c *config) Get(key string) string {
 	return os.Getenv(key)
 }

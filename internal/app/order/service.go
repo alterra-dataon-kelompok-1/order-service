@@ -7,7 +7,7 @@ import (
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/dto"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/model"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/repository"
-	"github.com/alterra-dataon-kelompok-1/order-service/pkg/utils/helper"
+	"github.com/alterra-dataon-kelompok-1/order-service/pkg/utils/helper/fetcher"
 	"github.com/google/uuid"
 )
 
@@ -16,15 +16,16 @@ type Service interface {
 	Create(ctx context.Context, payload dto.CreateOrderRequest) (*model.Order, error)
 	GetOrderByID(ctx context.Context, payload *dto.ByIDRequest) (*model.Order, error)
 	DeleteOrderByID(ctx context.Context, payload *dto.ByIDRequest) (*model.Order, error)
-	UpdateOrderByID(c context.Context, id uuid.UUID, payload *dto.UpdateOrderRequest) error
+	UpdateOrderByID(c context.Context, id uuid.UUID, payload *dto.UpdateOrderRequest) (*dto.GetOrderResponse, error)
 }
 
 type service struct {
-	repository repository.Repository
+	repository  repository.Repository
+	menuFetcher fetcher.Fetcher
 }
 
-func NewService(repository repository.Repository) Service {
-	return &service{repository}
+func NewService(repository repository.Repository, fetcher fetcher.Fetcher) Service {
+	return &service{repository, fetcher}
 }
 
 func (s *service) Get(ctx context.Context, payload *dto.GetRequest) (*dto.SearchGetResponse[model.Order], error) {
@@ -45,7 +46,7 @@ func (s *service) Create(ctx context.Context, payload dto.CreateOrderRequest) (*
 	// Cannot create order if no order item in payload
 	reqOrderQuantity := sumItemQuantity(payload.OrderItems)
 	if reqOrderQuantity == 0 {
-		return nil, errors.New("order shall have minimum 1 item")
+		return nil, errors.New("E_MINIMUM_ORDER")
 	}
 
 	newOrder := new(model.Order)
@@ -63,10 +64,18 @@ func (s *service) Create(ctx context.Context, payload dto.CreateOrderRequest) (*
 
 	// Assign item from payload to model
 	for i, item := range payload.OrderItems {
+		menuDetail, err := s.menuFetcher.FetchMenuDetail(item.MenuID)
+		if err != nil {
+			return nil, err
+		}
+
+		if menuDetail.InStock == 0 {
+			return nil, errors.New("E_NO_STOCK")
+		}
 		newOrder.OrderItems[i].OrderID = newOrder.ID
 		newOrder.OrderItems[i].MenuID = item.MenuID
 		newOrder.OrderItems[i].OrderItemStatus = model.Pending
-		newOrder.OrderItems[i].Price = helper.GetItemPrice(item.MenuID)
+		newOrder.OrderItems[i].Price = menuDetail.Price
 		newOrder.OrderItems[i].Quantity = item.Quantity
 	}
 
@@ -103,71 +112,61 @@ func (s *service) DeleteOrderByID(ctx context.Context, payload *dto.ByIDRequest)
 	return data, err
 }
 
-func (s *service) UpdateOrderByID(c context.Context, id uuid.UUID, payload *dto.UpdateOrderRequest) error {
-	// TODO: add logic to prevent cancel order when order is being prepared
-	// queriedOrder, err := s.repository.GetOrderByID(c, id)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// FIX: issue might be due to golang not allow us to
-	// fmt.Println(*payload.OrderStatus == model.CanceledOrder)
-	// fmt.Println(queriedOrder.OrderStatus != model.PendingOrder)
-	// fmt.Println(queriedOrder.OrderStatus != model.PaidOrder)
-	// if *payload.OrderStatus == model.CanceledOrder {
-	// 	if oldData.OrderStatus != model.PendingOrder || oldData.OrderStatus != model.PaidOrder {
-	// 		return errors.New("cannot cancel order after prepared")
-	// 	}
-	// }
-
-	/* orderData := make(map[string]interface{})
-	if payload.OrderStatus != nil {
-		orderData["order_status"] = payload.OrderStatus
-
-		err := s.repository.UpdateOrderByID(c, id, orderData)
-		if err != nil {
-			return errors.New("E_SERVER")
-		}
-	} */
-
-	var update model.Order
-	if payload.OrderStatus != nil {
-		update.OrderStatus = *payload.OrderStatus
-	}
-	if payload.OrderItems != nil {
-		update.OrderItems = make([]model.OrderItem, len(*payload.OrderItems))
-		for i, item := range *payload.OrderItems {
-			update.OrderItems[i].OrderID = id
-			update.OrderItems[i].MenuID = item.MenuID
-			if item.Status != nil {
-				update.OrderItems[i].OrderItemStatus = *item.Status
-			}
-			if item.Quantity != nil {
-				update.OrderItems[i].Quantity = *item.Quantity
-			}
-		}
-	}
-
-	err := s.repository.UpdateOrderByIDWithModel(c, id, &update)
+func (s *service) UpdateOrderByID(c context.Context, id uuid.UUID, payload *dto.UpdateOrderRequest) (*dto.GetOrderResponse, error) {
+	existingOrder, err := s.repository.GetOrderByID(c, id)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// if payload.OrderItems != nil {
-	// 	for _, v := range *payload.OrderItems {
-	// 		log.Println(v)
-	// 		orderItemData := make(map[string]interface{})
-	// 		if v.Status != nil {
-	// 			orderItemData["order_item_status"] = v.Status
-	// 		}
-	// 		if v.Quantity != nil {
-	// 			orderItemData["quantity"] = v.Quantity
-	// 		}
-	// 		fmt.Println("orderitems from payload=>", orderItemData)
-	// 	}
-	// }
+	// Prevent cancel order request when order is being prepared
+	if payload.OrderStatus != nil {
+		if *payload.OrderStatus == model.CanceledOrder && orderCanBeCanceled(existingOrder.OrderStatus) == false {
+			return nil, errors.New("E_ORDER_CANCEL")
+		}
+	}
 
-	return nil
+	if payload.OrderItems == nil {
+		err = s.repository.UpdateOrderStatusByID(c, id, payload)
+	} else {
+		updateOrder := model.Order{}
+		updateOrder.OrderItems = make([]model.OrderItem, len(*payload.OrderItems))
+		updateOrder.ID = id
+		updateOrder.UserID = existingOrder.UserID
+
+		// Assign item from payload to model
+		for i, item := range *payload.OrderItems {
+			menuDetail, err := s.menuFetcher.FetchMenuDetail(item.MenuID)
+			if err != nil {
+				return nil, err
+			}
+
+			if menuDetail.InStock == 0 {
+				return nil, errors.New("E_NO_STOCK")
+			}
+
+			updateOrder.OrderItems[i].OrderID = id
+			updateOrder.OrderItems[i].MenuID = item.MenuID
+			updateOrder.OrderItems[i].Price = menuDetail.Price
+
+			if item.Quantity != nil {
+				updateOrder.OrderItems[i].Quantity = *item.Quantity
+			}
+			if item.Status != nil {
+				updateOrder.OrderItems[i].OrderItemStatus = *item.Status
+			}
+		}
+		// Update the item
+		err := s.repository.UpdateOrderByID(c, id, &updateOrder)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Fetch updated order data from database
+	updated, err := s.repository.GetOrderByID(c, id)
+	res := newGetOrderRequestFromModel(updated)
+
+	return &res, nil
 }
 
 type hasQuantity interface {
@@ -182,10 +181,39 @@ func sumItemQuantity[T hasQuantity](s []T) int {
 	return sum
 }
 
-func sumItemPrice(s []model.OrderItem) float32 {
-	var sum float32
+func sumItemPrice(s []model.OrderItem) float64 {
+	var sum float64
 	for _, item := range s {
-		sum = sum + (item.Price * float32(item.Quantity))
+		sum = sum + (item.Price * float64(item.Quantity))
 	}
 	return sum
+}
+
+func orderCanBeCanceled(current model.OrderStatus) bool {
+	if current == model.PendingOrder {
+		return true
+	}
+	if current == model.PaidOrder {
+		return true
+	}
+	return false
+}
+
+func newGetOrderRequestFromModel(m *model.Order) dto.GetOrderResponse {
+	orderItems := make([]dto.GetOrderItemResponse, len(m.OrderItems))
+	for i, item := range m.OrderItems {
+		orderItems[i].MenuID = item.MenuID
+		orderItems[i].OrderItemStatus = string(item.OrderItemStatus)
+		orderItems[i].Quantity = item.Quantity
+		orderItems[i].Price = item.Price
+	}
+
+	return dto.GetOrderResponse{
+		ID:            m.ID,
+		UserID:        m.UserID,
+		OrderStatus:   m.OrderStatus,
+		TotalPrice:    m.TotalPrice,
+		TotalQuantity: m.TotalQuantity,
+		OrderItems:    orderItems,
+	}
 }

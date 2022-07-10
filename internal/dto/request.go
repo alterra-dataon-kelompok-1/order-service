@@ -17,18 +17,18 @@ type CreateOrderRequest struct {
 }
 
 type CreateOrderItemRequest struct {
-	MenuID   uuid.UUID `json:"menu_id"`
-	Quantity int       `json:"quantity"`
+	MenuID   uuid.UUID `json:"menu_id" validate:"required"`
+	Quantity int       `json:"quantity" validate:"required"`
 }
 
 type UpdateOrderRequest struct {
-	OrderStatus *model.OrderStatus        `json:"order_status"`
-	OrderItems  *[]UpdateOrderItemRequest `json:"order_items" gorm:"foreignKey:OrderID"`
+	OrderStatus *model.OrderStatus        `json:"order_status,omitempty"`
+	OrderItems  *[]UpdateOrderItemRequest `json:"order_items,omitempty" gorm:"foreignKey:OrderID"`
 }
 
 type UpdateOrderItemRequest struct {
-	OrderID  uuid.UUID              `json:"order_id" gorm:"type:uuid;primaryKey"`
-	MenuID   uuid.UUID              `json:"menu_id" validation:"required" gorm:"primaryKey;not null"`
+	OrderID  uuid.UUID              `json:"order_id" validate:"omitempty,uuid" gorm:"type:uuid;primaryKey"`
+	MenuID   uuid.UUID              `json:"menu_id" gorm:"primaryKey;not null"`
 	Status   *model.OrderItemStatus `json:"order_item_status"`
 	Quantity *int                   `json:"quantity"`
 }

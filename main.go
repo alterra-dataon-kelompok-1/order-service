@@ -15,7 +15,7 @@ import (
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/app/order"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/middleware"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/repository"
-	"github.com/alterra-dataon-kelompok-1/order-service/pkg/utils/interservice"
+	"github.com/alterra-dataon-kelompok-1/order-service/pkg/utils/helper/fetcher"
 	"github.com/labstack/echo/v4"
 )
 
@@ -47,13 +47,15 @@ func main() {
 		seeder.Seed(db)
 	}
 
+	menuFetcher := fetcher.NewFetcher("localhost:1234/menu")
 	orderRepo := repository.NewRepository(db)
-	orderService := order.NewService(orderRepo)
-	orderHandler := order.NewHandler(orderService)
+	orderService := order.NewService(orderRepo, menuFetcher)
 
-	// FIX: how to implement cleanly
-	menuServiceAPI := interservice.NewInterservice(config)
-	log.Println(menuServiceAPI)
+	if envFlag == "dev" {
+		orderService = order.NewService(orderRepo, &fetcher.MockFetcher{})
+	}
+
+	orderHandler := order.NewHandler(orderService)
 
 	app := echo.New()
 	order.RegisterHandlers(app, orderHandler)

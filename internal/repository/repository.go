@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/dto"
@@ -15,9 +16,8 @@ type Repository interface {
 	Create(ctx context.Context, order model.Order) (*model.Order, error)
 	GetOrderByID(ctx context.Context, id uuid.UUID) (*model.Order, error)
 	DeleteOrderByID(ctx context.Context, id uuid.UUID) error
-	UpdateOrderByIDWithModel(ctx context.Context, id uuid.UUID, data *model.Order) error
-	UpdateOrderByIDWithDTO(ctx context.Context, id uuid.UUID, data *dto.UpdateOrderRequest) error
-	UpdateOrderItemByID(ctx context.Context, orderID uuid.UUID, data *model.OrderItem) error
+	UpdateOrderByID(ctx context.Context, id uuid.UUID, payload *model.Order) error
+	UpdateOrderStatusByID(ctx context.Context, id uuid.UUID, payload *dto.UpdateOrderRequest) error
 }
 
 type repository struct {
@@ -64,13 +64,25 @@ func (r *repository) DeleteOrderByID(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Delete(&model.Order{}, id).Error
 }
 
-// func (r *repository) UpdateOrderByID(ctx context.Context, id uuid.UUID, data map[string]interface{}) error {
-// 	log.Println("data in repo:", data)
-// 	err := r.db.WithContext(ctx).Where("id = ?", id).Model(&model.Order{}).Updates(data).Error
-// 	return err
-// }
+// Only works without association
+func (r *repository) UpdateOrderStatusByID(ctx context.Context, id uuid.UUID, payload *dto.UpdateOrderRequest) error {
+	updates := make(map[string]interface{})
+	j, _ := json.Marshal(payload)
+	json.Unmarshal(j, &updates)
 
-func (r *repository) UpdateOrderByIDWithModel(ctx context.Context, id uuid.UUID, data *model.Order) error {
+	err := r.db.WithContext(ctx).Session(&gorm.Session{FullSaveAssociations: true}).Where("id = ?", id).Model(&model.Order{}).Updates(updates).Error
+	log.Println("err in repo", err)
+	return err
+}
+
+func (r *repository) UpdateOrderByID(ctx context.Context, id uuid.UUID, payload *model.Order) error {
+	log.Println("payload in repo", payload)
+	err := r.db.WithContext(ctx).Session(&gorm.Session{FullSaveAssociations: true}).Updates(payload).Error
+	log.Println("err in repo", err)
+	return err
+}
+
+/* func (r *repository) UpdateOrderByIDWithModel(ctx context.Context, id uuid.UUID, data *model.Order) error {
 	log.Println("data in repo:", data)
 
 	if data.OrderItems != nil {
@@ -79,12 +91,13 @@ func (r *repository) UpdateOrderByIDWithModel(ctx context.Context, id uuid.UUID,
 	}
 
 	// FIX: try to save issue:3353
-	err := r.db.WithContext(ctx).Session(&gorm.Session{FullSaveAssociations: true}).Where("id = ?", id).Model(&model.Order{}).Save(&data).Error
+	err := r.db.WithContext(ctx).Session(&gorm.Session{FullSaveAssociations: true}).Where("id = ?", id).Model(&model.Order{}).Updates(&data).Error
 
 	log.Println("<> data after update:", data)
 
 	return err
 }
+
 
 func (r *repository) UpdateOrderByIDWithDTO(ctx context.Context, id uuid.UUID, data *dto.UpdateOrderRequest) error {
 	log.Println("data in repo:", data)
@@ -101,4 +114,4 @@ func (r *repository) UpdateOrderItemByID(ctx context.Context, orderID uuid.UUID,
 	// err := r.db.WithContext(ctx).Where("order_id = ?", orderID).Model(&model.OrderItem{}).Updates(data).Error
 	log.Println("error update?", err)
 	return err
-}
+} */

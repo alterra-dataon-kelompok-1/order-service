@@ -7,7 +7,7 @@ type OrderItem struct {
 	MenuID          uuid.UUID       `json:"menu_id" gorm:"primaryKey;not null"`
 	OrderItemStatus OrderItemStatus `json:"order_item_status" gorm:"type:enum('pending', 'paid', 'prepared', 'delivered');default:'pending'"`
 	Quantity        int             `json:"quantity"`
-	Price           float32         `json:"price"`
+	Price           float64         `json:"price" gorm:"not null;type:decimal(25,2)"`
 
 	Model
 }

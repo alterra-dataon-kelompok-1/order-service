@@ -16,6 +16,7 @@ import (
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/model"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/repository"
 	"github.com/alterra-dataon-kelompok-1/order-service/pkg/response"
+	"github.com/alterra-dataon-kelompok-1/order-service/pkg/utils/helper/fetcher"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +38,7 @@ func createTestApp() (*echo.Echo, *gorm.DB, Handler) {
 
 	e := echo.New()
 	orderRepo := repository.NewRepository(db)
-	orderService := NewService(orderRepo)
+	orderService := NewService(orderRepo, &fetcher.MockFetcher{})
 	orderHandler := NewHandler(orderService)
 
 	middleware.Init(e)
