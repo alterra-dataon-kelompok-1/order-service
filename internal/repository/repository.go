@@ -81,37 +81,3 @@ func (r *repository) UpdateOrderByID(ctx context.Context, id uuid.UUID, payload 
 	log.Println("err in repo", err)
 	return err
 }
-
-/* func (r *repository) UpdateOrderByIDWithModel(ctx context.Context, id uuid.UUID, data *model.Order) error {
-	log.Println("data in repo:", data)
-
-	if data.OrderItems != nil {
-		qty := data.OrderItems[0].Quantity
-		log.Println("qty:", qty)
-	}
-
-	// FIX: try to save issue:3353
-	err := r.db.WithContext(ctx).Session(&gorm.Session{FullSaveAssociations: true}).Where("id = ?", id).Model(&model.Order{}).Updates(&data).Error
-
-	log.Println("<> data after update:", data)
-
-	return err
-}
-
-
-func (r *repository) UpdateOrderByIDWithDTO(ctx context.Context, id uuid.UUID, data *dto.UpdateOrderRequest) error {
-	log.Println("data in repo:", data)
-	// FIX: try to save issue:3353
-	err := r.db.WithContext(ctx).Session(&gorm.Session{FullSaveAssociations: true}).Where("id = ?", id).Model(&model.Order{}).Save(&data).Error
-
-	log.Println("<> data after update:", data)
-
-	return err
-}
-
-func (r *repository) UpdateOrderItemByID(ctx context.Context, orderID uuid.UUID, data *model.OrderItem) error {
-	err := r.db.WithContext(ctx).Where("order_id = ?", orderID).Where("menu_id = ?", data.MenuID).Model(&model.OrderItem{}).Updates(data).Error
-	// err := r.db.WithContext(ctx).Where("order_id = ?", orderID).Model(&model.OrderItem{}).Updates(data).Error
-	log.Println("error update?", err)
-	return err
-} */

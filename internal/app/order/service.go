@@ -3,6 +3,7 @@ package order
 import (
 	"context"
 	"errors"
+	"math"
 
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/dto"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/model"
@@ -98,7 +99,6 @@ func (s *service) GetOrderByID(ctx context.Context, payload *dto.ByIDRequest) (*
 		return nil, errors.New("E_SERVER")
 	}
 
-	// TODO: decide if we need to transfer response dto instead
 	return data, nil
 }
 
@@ -115,7 +115,7 @@ func (s *service) DeleteOrderByID(ctx context.Context, payload *dto.ByIDRequest)
 func (s *service) UpdateOrderByID(c context.Context, id uuid.UUID, payload *dto.UpdateOrderRequest) (*dto.GetOrderResponse, error) {
 	existingOrder, err := s.repository.GetOrderByID(c, id)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("E_NOT_FOUND")
 	}
 
 	// Prevent cancel order request when order is being prepared
@@ -164,7 +164,7 @@ func (s *service) UpdateOrderByID(c context.Context, id uuid.UUID, payload *dto.
 
 	// Fetch updated order data from database
 	updated, err := s.repository.GetOrderByID(c, id)
-	res := newGetOrderRequestFromModel(updated)
+	res := ModelToGetOrderResponse(updated)
 
 	return &res, nil
 }
@@ -186,7 +186,7 @@ func sumItemPrice(s []model.OrderItem) float64 {
 	for _, item := range s {
 		sum = sum + (item.Price * float64(item.Quantity))
 	}
-	return sum
+	return math.Round(sum*100) / 100
 }
 
 func orderCanBeCanceled(current model.OrderStatus) bool {
@@ -199,7 +199,7 @@ func orderCanBeCanceled(current model.OrderStatus) bool {
 	return false
 }
 
-func newGetOrderRequestFromModel(m *model.Order) dto.GetOrderResponse {
+func ModelToGetOrderResponse(m *model.Order) dto.GetOrderResponse {
 	orderItems := make([]dto.GetOrderItemResponse, len(m.OrderItems))
 	for i, item := range m.OrderItems {
 		orderItems[i].MenuID = item.MenuID

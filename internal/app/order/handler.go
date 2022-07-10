@@ -61,12 +61,6 @@ func (h *handler) GetOrderByID(c echo.Context) error {
 	if err := c.Bind(&payload); err != nil {
 		return res.NewErrorResponse(c, res.ErrorConst.BadRequest)
 	}
-	log.Println(payload)
-
-	if err := c.Validate(payload); err != nil {
-		log.Println(err)
-		return res.NewErrorResponse(c, res.ErrorConst.Validation)
-	}
 
 	result, err := h.service.GetOrderByID(c.Request().Context(), &payload)
 	if err != nil {
@@ -121,6 +115,9 @@ func (h *handler) UpdateOrderByID(c echo.Context) error {
 	data, err := h.service.UpdateOrderByID(c.Request().Context(), id, payload)
 	if err != nil {
 		log.Println("==> error:", err)
+		if err.Error() == "E_NOT_FOUND" {
+			return res.NewErrorResponse(c, res.ErrorConst.ResourceNotFound)
+		}
 		return res.NewErrorResponse(c, res.ErrorConst.InternalServerError)
 	}
 

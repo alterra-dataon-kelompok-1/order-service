@@ -1,13 +1,19 @@
 package order
 
 import (
+	"context"
+	"log"
 	"testing"
 
+	mock_repository "github.com/alterra-dataon-kelompok-1/order-service/internal/app/order/mock"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/dto"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/model"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/repository"
+	"github.com/alterra-dataon-kelompok-1/order-service/pkg/utils/helper/fetcher"
+	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var orderServiceRepoInterface repository.Repository
@@ -50,30 +56,28 @@ func setupDummyOrders() []model.Order {
 	}
 }
 
-// func TestGet(t *testing.T) {
-// 	ctrl := gomock.NewController(t)
-// 	defer ctrl.Finish()
-//
-// 	mockOrderRepository := mock_repository.NewMockRepository(ctrl)
-// 	orderService := NewService(mockOrderRepository)
-//
-// 	dummyOrders := setupDummyOrders()
-// 	query := dto.GetRequest{}
-//
-// 	ctx := context.Background()
-//
-// 	defaultPagination := dto.PaginationInfo{}
-// 	mockOrderRepository.EXPECT().GetOrders(ctx, &query).Return(&dummyOrders, &defaultPagination, nil)
-//
-// 	orders, err := orderService.Get(ctx, &query)
-// 	log.Println("==>> orders from mock")
-// 	log.Println(orders)
-//
-// 	require.NoError(t, err)
-// 	require.Nil(t, err)
-// 	require.Nil(t, orders)
-//
-// }
+func TestGet(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockOrderRepository := mock_repository.NewMockRepository(ctrl)
+	orderService := NewService(mockOrderRepository, &fetcher.MockFetcher{})
+
+	dummyOrders := setupDummyOrders()
+	query := dto.GetRequest{}
+
+	ctx := context.Background()
+
+	defaultPagination := dto.PaginationInfo{}
+	mockOrderRepository.EXPECT().GetOrders(ctx, &query).Return(&dummyOrders, &defaultPagination, nil)
+
+	orders, err := orderService.Get(ctx, &query)
+	log.Println(orders)
+
+	require.NoError(t, err)
+	require.Nil(t, err)
+
+}
 
 func TestSumItemQuantity(t *testing.T) {
 	// Test for 0 item
@@ -118,4 +122,49 @@ func TestSumItemPrice(t *testing.T) {
 	}
 	res = sumItemPrice(orderItem)
 	assert.Equal(t, float64(2_000.02), res)
+}
+
+func TestOrderCanBeCanceled(t *testing.T) {
+	assert.Equal(t, true, orderCanBeCanceled(model.PendingOrder))
+	assert.Equal(t, true, orderCanBeCanceled(model.PaidOrder))
+	assert.Equal(t, false, orderCanBeCanceled(model.CanceledOrder))
+}
+
+func TestModelToGetOrderResponse(t *testing.T) {
+	orderItems5 := model.OrderItem{
+		OrderID:         uuid.New(),
+		MenuID:          uuid.New(),
+		OrderItemStatus: model.Pending,
+		Quantity:        2,
+		Price:           6000,
+	}
+
+	orderItems6 := model.OrderItem{
+		OrderID:         uuid.New(),
+		MenuID:          uuid.New(),
+		OrderItemStatus: model.Pending,
+		Quantity:        2,
+		Price:           6000,
+	}
+
+	uid := uuid.New()
+	o := model.Order{
+		ID:            uuid.New(),
+		UserID:        &uid,
+		OrderStatus:   model.CanceledOrder,
+		TotalPrice:    123.4,
+		TotalQuantity: 3,
+		OrderItems: []model.OrderItem{
+			orderItems5,
+			orderItems6,
+		},
+	}
+
+	r := ModelToGetOrderResponse(&o)
+
+	assert.Equal(t, o.ID, r.ID)
+	assert.Equal(t, o.UserID, r.UserID)
+	assert.Equal(t, o.OrderStatus, r.OrderStatus)
+	assert.Equal(t, o.TotalPrice, r.TotalPrice)
+	assert.Equal(t, o.TotalQuantity, r.TotalQuantity)
 }

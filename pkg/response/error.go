@@ -6,8 +6,6 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// ref: https://github.com/Microsoft/api-guide/blob/master/Guidelines.md#7102-error-condition-responses
-
 type Error struct {
 	Response `json:"response"`
 	HTTPCode int
@@ -28,8 +26,9 @@ type errorConst struct {
 	Validation          Error
 	InternalServerError Error
 
-	NotEnoughStock Error
-	NoOrderItem    Error
+	NotEnoughStock    Error
+	NoOrderItem       Error
+	CannotCancelOrder Error
 }
 
 var ErrorConst errorConst = errorConst{
@@ -86,6 +85,13 @@ var ErrorConst errorConst = errorConst{
 		Response: Response{
 			Code:    "E_NO_ITEM_PROVIDED",
 			Message: "order item quantity must not be zero",
+		},
+		HTTPCode: http.StatusBadRequest,
+	},
+	CannotCancelOrder: Error{
+		Response: Response{
+			Code:    "E_CANNOT_CANCEL",
+			Message: "prepared order cannot be canceled",
 		},
 		HTTPCode: http.StatusBadRequest,
 	},
