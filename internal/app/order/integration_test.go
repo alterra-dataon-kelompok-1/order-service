@@ -3,7 +3,6 @@ package order
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,7 +14,7 @@ import (
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/middleware"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/model"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/repository"
-	"github.com/alterra-dataon-kelompok-1/order-service/pkg/utils/helper/fetcher"
+	"github.com/alterra-dataon-kelompok-1/order-service/pkg/fetcher"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -24,8 +23,6 @@ import (
 
 func createTestApp() (*echo.Echo, *gorm.DB, Handler) {
 	// TODO: use mock / test db instead of actual db
-	// Since we do not use any mock in this test, it is more of integration test that cover service and also repository at the same time
-	// db, err := database.ConnectDevDB()
 	db, err := database.ConnectSQLDB(config.New("../../../.env"))
 
 	if err != nil {
@@ -165,7 +162,6 @@ func TestGetOrderByID(t *testing.T) {
 
 	testCase := []struct {
 		Case             string
-		RequestBody      dto.UpdateOrderRequest
 		ParamID          string
 		WantResponseCode int
 		WantBodyContains string
@@ -212,7 +208,7 @@ func TestGetOrderByID(t *testing.T) {
 	}
 }
 
-func TestDeleteOrderByID_Base(t *testing.T) {
+func TestDeleteOrderByID(t *testing.T) {
 	// Setup
 	e, db, h := createTestApp()
 	defer database.DropTables(db)
@@ -281,7 +277,6 @@ func FindAfterDelete(e *echo.Echo, h Handler, stringUUID string) bool {
 	c.SetParamValues(stringUUID)
 
 	h.GetOrderByID(c)
-	fmt.Println("status:", rec.Code)
 	if rec.Code == http.StatusOK {
 		return true
 	}

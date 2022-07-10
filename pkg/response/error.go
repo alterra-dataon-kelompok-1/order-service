@@ -100,3 +100,21 @@ var ErrorConst errorConst = errorConst{
 func NewErrorResponse(c echo.Context, error Error) error {
 	return c.JSON(error.HTTPCode, error.Response)
 }
+
+func NewErrorBuilder(error Error) *Error {
+	return &Error{error.Response, error.HTTPCode}
+}
+
+func (e *Error) WithMessage(m string) *Error {
+	e.Response.Message = m
+	return e
+}
+
+func (e *Error) WithErorrCode(c string) *Error {
+	e.Response.Code = c
+	return e
+}
+
+func (e *Error) SendJSON(c echo.Context) error {
+	return c.JSON(e.HTTPCode, e.Response)
+}

@@ -15,7 +15,7 @@ import (
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/app/order"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/middleware"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/repository"
-	"github.com/alterra-dataon-kelompok-1/order-service/pkg/utils/helper/fetcher"
+	"github.com/alterra-dataon-kelompok-1/order-service/pkg/fetcher"
 	"github.com/labstack/echo/v4"
 )
 
@@ -47,7 +47,7 @@ func main() {
 		seeder.Seed(db)
 	}
 
-	menuFetcher := fetcher.NewFetcher("localhost:1234/menu")
+	menuFetcher := fetcher.NewFetcher(os.Getenv("MENU_SERVICE_ENDPOINT"))
 	orderRepo := repository.NewRepository(db)
 	orderService := order.NewService(orderRepo, menuFetcher)
 
@@ -60,6 +60,16 @@ func main() {
 	app := echo.New()
 	order.RegisterHandlers(app, orderHandler)
 	middleware.Init(app)
+
+	// Set logger and close the os file
+	logFile, err := os.OpenFile("logfile", os.O_WRONLY|os.O_CREATE, 0755)
+	if err != nil {
+		log.Printf("error opening file: %v\n", err)
+		middleware.SetEchoLogger(app, os.Stdout)
+	} else {
+		middleware.SetEchoLogger(app, logFile)
+		defer logFile.Close()
+	}
 
 	// Gracefully shutdown
 	go func() {

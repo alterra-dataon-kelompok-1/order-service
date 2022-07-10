@@ -2,18 +2,18 @@ package order
 
 import (
 	"context"
-	"log"
+	"errors"
+	"reflect"
 	"testing"
 
 	mock_repository "github.com/alterra-dataon-kelompok-1/order-service/internal/app/order/mock"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/dto"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/model"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/repository"
-	"github.com/alterra-dataon-kelompok-1/order-service/pkg/utils/helper/fetcher"
+	"github.com/alterra-dataon-kelompok-1/order-service/pkg/fetcher"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 var orderServiceRepoInterface repository.Repository
@@ -60,23 +60,241 @@ func TestGet(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockOrderRepository := mock_repository.NewMockRepository(ctrl)
-	orderService := NewService(mockOrderRepository, &fetcher.MockFetcher{})
-
 	dummyOrders := setupDummyOrders()
-	query := dto.GetRequest{}
+	defaultPage := 1
+	defaultPageSize := 10
 
-	ctx := context.Background()
+	type args struct {
+		ctx     context.Context
+		payload *dto.GetRequest
+	}
 
-	defaultPagination := dto.PaginationInfo{}
-	mockOrderRepository.EXPECT().GetOrders(ctx, &query).Return(&dummyOrders, &defaultPagination, nil)
+	tests := []struct {
+		name       string
+		args       args
+		beforeTest func(orderRepo *mock_repository.MockRepository)
+		want       *dto.SearchGetResponse[model.Order]
+		wantErr    bool
+	}{
+		{
+			name: "success get all user w/o pagination",
+			args: args{
+				ctx:     context.TODO(),
+				payload: &dto.GetRequest{},
+			},
+			beforeTest: func(orderRepo *mock_repository.MockRepository) {
+				orderRepo.EXPECT().GetOrders(context.TODO(), &dto.GetRequest{}).Return(
+					&dummyOrders,
+					&dto.PaginationInfo{
+						Pagination: dto.Pagination{
+							Page:     &defaultPage,
+							PageSize: &defaultPageSize,
+						},
+						Count:       2,
+						MoreRecords: false,
+						TotalPage:   1,
+					},
+					nil,
+				)
+			},
+			want: &dto.SearchGetResponse[model.Order]{
+				Data: dummyOrders,
+				PaginationInfo: &dto.PaginationInfo{Pagination: dto.Pagination{
+					Page:     &defaultPage,
+					PageSize: &defaultPageSize,
+				}, Count: 2, MoreRecords: false, TotalPage: 1},
+			},
+			wantErr: false,
+		},
+		{
+			name: "error from repo",
+			args: args{
+				ctx:     context.TODO(),
+				payload: &dto.GetRequest{},
+			},
+			beforeTest: func(orderRepo *mock_repository.MockRepository) {
+				orderRepo.EXPECT().GetOrders(context.TODO(), &dto.GetRequest{}).Return(nil, nil, errors.New("simulated db err"))
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
 
-	orders, err := orderService.Get(ctx, &query)
-	log.Println(orders)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockOrderRepo := mock_repository.NewMockRepository(ctrl)
+			orderService := NewService(mockOrderRepo, &fetcher.MockFetcher{})
 
-	require.NoError(t, err)
-	require.Nil(t, err)
+			if tt.beforeTest != nil {
+				tt.beforeTest(mockOrderRepo)
+			}
 
+			got, err := orderService.Get(tt.args.ctx, tt.args.payload)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("service.Create() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("service.Create() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCreate(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	uid := uuid.New()
+
+	type args struct {
+		ctx     context.Context
+		payload dto.CreateOrderRequest
+	}
+
+	tests := []struct {
+		name       string
+		args       args
+		beforeTest func(orderRepo *mock_repository.MockRepository)
+		want       *model.Order
+		wantErr    bool
+	}{
+		{
+			name: "no order item provided",
+			args: args{
+				ctx: context.TODO(),
+				payload: dto.CreateOrderRequest{
+					UserID:     &uid,
+					OrderItems: nil,
+				},
+			},
+			beforeTest: func(orderRepo *mock_repository.MockRepository) {
+				orderRepo.EXPECT().Create(context.TODO(), &model.Order{}).Times(0)
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		// NOTE: success cannot be unit tested due to random UUID is generated in the function
+		// {
+		// 	name: "success",
+		// 	args: args{
+		// 		ctx: context.TODO(),
+		// 		payload: dto.CreateOrderRequest{
+		// 			UserID: &uid,
+		// 			OrderItems: []dto.CreateOrderItemRequest{
+		// 				{
+		// 					MenuID:   mid1,
+		// 					Quantity: 1,
+		// 				},
+		// 				{
+		// 					MenuID:   mid2,
+		// 					Quantity: 2,
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// 	beforeTest: func(orderRepo *mock_repository.MockRepository) {
+		// 		orderRepo.EXPECT().Create(context.TODO(), &model.Order{
+		// 			ID:            uuid.UUID{},
+		// 			UserID:        &uid,
+		// 			OrderStatus:   model.PendingOrder,
+		// 			TotalPrice:    30_000,
+		// 			TotalQuantity: 3,
+		// 			OrderItems: []model.OrderItem{
+		// 				{
+		// 					OrderID:         uuid.UUID{},
+		// 					MenuID:          mid1,
+		// 					OrderItemStatus: model.Pending,
+		// 					Quantity:        1,
+		// 					Price:           10_000,
+		// 					Model:           model.Model{},
+		// 				},
+		// 				{
+		// 					OrderID:         uuid.UUID{},
+		// 					MenuID:          mid2,
+		// 					OrderItemStatus: model.Pending,
+		// 					Quantity:        2,
+		// 					Price:           10_000,
+		// 					Model:           model.Model{},
+		// 				},
+		// 			},
+		// 			Model: model.Model{},
+		// 		}).Return(&model.Order{
+		// 			ID:            uuid.UUID{},
+		// 			UserID:        &uid,
+		// 			OrderStatus:   model.PendingOrder,
+		// 			TotalPrice:    30_000,
+		// 			TotalQuantity: 3,
+		// 			OrderItems: []model.OrderItem{
+		// 				{
+		// 					OrderID:         uuid.UUID{},
+		// 					MenuID:          mid1,
+		// 					OrderItemStatus: model.Pending,
+		// 					Quantity:        1,
+		// 					Price:           10_000,
+		// 					Model:           model.Model{},
+		// 				},
+		// 				{
+		// 					OrderID:         uuid.UUID{},
+		// 					MenuID:          mid2,
+		// 					OrderItemStatus: model.Pending,
+		// 					Quantity:        2,
+		// 					Price:           10_000,
+		// 					Model:           model.Model{},
+		// 				},
+		// 			},
+		// 			Model: model.Model{},
+		// 		},
+		// 			nil)
+		// 	},
+		// 	want: &model.Order{
+		// 		// ID:            oid,
+		// 		UserID:        &uid,
+		// 		OrderStatus:   model.PendingOrder,
+		// 		TotalPrice:    30_000,
+		// 		TotalQuantity: 3,
+		// 		OrderItems: []model.OrderItem{
+		// 			{
+		// 				// OrderID:         oid,
+		// 				MenuID:          mid1,
+		// 				OrderItemStatus: model.Pending,
+		// 				Quantity:        1,
+		// 				Price:           10_000,
+		// 				Model:           model.Model{},
+		// 			},
+		// 			{
+		// 				// OrderID:         oid,
+		// 				MenuID:          mid2,
+		// 				OrderItemStatus: model.Pending,
+		// 				Quantity:        2,
+		// 				Price:           10_000,
+		// 				Model:           model.Model{},
+		// 			},
+		// 		},
+		// 		Model: model.Model{},
+		// 	},
+		// 	wantErr: true,
+		// },
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockOrderRepo := mock_repository.NewMockRepository(ctrl)
+			orderService := NewService(mockOrderRepo, &fetcher.MockFetcher{})
+
+			if tt.beforeTest != nil {
+				tt.beforeTest(mockOrderRepo)
+			}
+
+			got, err := orderService.Create(tt.args.ctx, tt.args.payload)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("service.Create() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("service.Create() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
 
 func TestSumItemQuantity(t *testing.T) {

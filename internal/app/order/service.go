@@ -8,7 +8,7 @@ import (
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/dto"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/model"
 	"github.com/alterra-dataon-kelompok-1/order-service/internal/repository"
-	"github.com/alterra-dataon-kelompok-1/order-service/pkg/utils/helper/fetcher"
+	"github.com/alterra-dataon-kelompok-1/order-service/pkg/fetcher"
 	"github.com/google/uuid"
 )
 
