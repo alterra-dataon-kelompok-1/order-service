@@ -23,3 +23,16 @@ mock-repository: ## generate mock repository
 mock-service: ## test, generate coverage report, and show it
 	mockgen -source=./internal/app/order/service.go \
 	-destination=./internal/app/order/mock/service_mock.go
+
+.PHONY: docker-build-mac
+docker-build-mac: ## building docker file for mac m1
+	docker build -t dimasabiyoga/order-service:latest-m1 .
+
+.PHONY: docker-build-linux
+docker-build-linux: ## building docker file for linux platform
+	docker buildx build -t dimasabiyoga/order-service:latest --platform linux/amd64 .
+
+.PHONY: docker-push
+docker-push: ## push latest linux image to docker hub
+	docker push dimasabiyoga/order-service:latest
+
