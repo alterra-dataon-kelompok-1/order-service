@@ -3,6 +3,7 @@ package fetcher
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -22,6 +23,7 @@ type fetcher struct {
 
 func (f *fetcher) FetchMenuDetail(mid uuid.UUID) (*Menu, error) {
 	fetchMenuURL := fmt.Sprintf("http://%s/%s", f.ExternalServiceURL, mid)
+	log.Println("fetching menu: ", fetchMenuURL)
 	res, err := http.Get(fetchMenuURL)
 	if err != nil {
 		return nil, err
@@ -30,5 +32,6 @@ func (f *fetcher) FetchMenuDetail(mid uuid.UUID) (*Menu, error) {
 	resBody := httpResp{}
 
 	err = json.NewDecoder(res.Body).Decode(&resBody)
+	log.Println("received menu data: ", resBody.Data)
 	return &resBody.Data, nil
 }

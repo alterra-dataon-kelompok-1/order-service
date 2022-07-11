@@ -42,10 +42,7 @@ func main() {
 	}
 
 	database.MigrateDB(db)
-
-	if envFlag == "dev" {
-		seeder.Seed(db)
-	}
+	seeder.Seed(db)
 
 	menuFetcher := fetcher.NewFetcher(os.Getenv("MENU_SERVICE_ENDPOINT"))
 	orderRepo := repository.NewRepository(db)
