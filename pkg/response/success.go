@@ -9,7 +9,11 @@ import (
 type SuccessResponse struct {
 	Data     interface{} `json:"data"`
 	Meta     interface{} `json:"meta,omitempty"`
-	Location string      `json:"_location,omitempty"`
+	Location string      `json:"location,omitempty"`
+}
+
+type Location struct {
+	Location string `json:"location,omitempty"`
 }
 
 type Success struct {
@@ -40,7 +44,7 @@ func (s *Success) WithData(data interface{}) *Success {
 
 // Resource Location builder for Success struct
 func (s *Success) WithResourceLocation(appURL, resourceID string) *Success {
-	s.Response.Location = fmt.Sprintf("http://%s/v1/orders/%s", appURL, resourceID)
+	s.Response.Meta = Location{Location: fmt.Sprintf("%s/v1/orders/%s", appURL, resourceID)}
 	return s
 }
 

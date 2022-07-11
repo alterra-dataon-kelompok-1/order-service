@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-retryablehttp"
 )
 
 func NewFetcher(uri string) Fetcher {
@@ -24,7 +24,10 @@ type fetcher struct {
 func (f *fetcher) FetchMenuDetail(mid uuid.UUID) (*Menu, error) {
 	fetchMenuURL := fmt.Sprintf("http://%s/%s", f.ExternalServiceURL, mid)
 	log.Println("fetching menu: ", fetchMenuURL)
-	res, err := http.Get(fetchMenuURL)
+	retryClient := retryablehttp.NewClient()
+	retryClient.RetryMax = 10
+
+	res, err := retryClient.Get(fetchMenuURL)
 	if err != nil {
 		return nil, err
 	}

@@ -43,16 +43,20 @@ func (h *handler) Get(c echo.Context) error {
 func (h *handler) Create(c echo.Context) error {
 	payload := new(dto.CreateOrderRequest)
 	if err := c.Bind(&payload); err != nil {
+		log.Println("err:", err)
 		return res.NewErrorResponse(c, res.ErrorConst.BadRequest)
 	}
+	log.Println("payload")
 
 	newOrder, err := h.service.Create(c.Request().Context(), *payload)
 	if err != nil {
+		log.Println("err:", err)
 		return res.NewErrorResponse(c, res.ErrorConst.BadRequest)
 	}
+	log.Println("newOrder")
 
 	// TODO: Implement passing resource location during runtime
-	successResp := res.NewSuccessBuilder().Status(http.StatusCreated).WithData(*newOrder).WithResourceLocation(os.Getenv("MENU_SERVICE_URL"), newOrder.ID.String())
+	successResp := res.NewSuccessBuilder().Status(http.StatusCreated).WithData(*newOrder).WithResourceLocation(os.Getenv("APP_HOST_URL"), newOrder.ID.String())
 	return successResp.SendJSON(c)
 }
 
